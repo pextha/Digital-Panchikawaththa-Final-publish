@@ -1,0 +1,2 @@
+E:/Panchikawaththa-MAD-Final-Course-Work/android/app/.cxx/Debug/2y564a2l/arm64-v8a/CMakeFiles/edit_cache.dir
+E:/Panchikawaththa-MAD-Final-Course-Work/android/app/.cxx/Debug/2y564a2l/arm64-v8a/CMakeFiles/rebuild_cache.dir

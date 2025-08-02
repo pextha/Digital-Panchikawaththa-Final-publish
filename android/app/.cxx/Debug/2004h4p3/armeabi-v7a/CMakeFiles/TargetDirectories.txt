@@ -1,0 +1,2 @@
+C:/Users/pathum/source/repos/Panchikawaththa-MAD-Final-Course-Work/android/app/.cxx/Debug/2004h4p3/armeabi-v7a/CMakeFiles/edit_cache.dir
+C:/Users/pathum/source/repos/Panchikawaththa-MAD-Final-Course-Work/android/app/.cxx/Debug/2004h4p3/armeabi-v7a/CMakeFiles/rebuild_cache.dir

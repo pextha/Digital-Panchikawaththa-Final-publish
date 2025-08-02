@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "315712697297",
+    "project_id": "digital-panchikawaththa",
+    "storage_bucket": "digital-panchikawaththa.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:315712697297:android:60354316d248fe7043e6f0",
+        "android_client_info": {
+          "package_name": "com.example.panchikawaththa"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAJM5lXoksHhs_DVPwEw6itXND3-7aWN1E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
