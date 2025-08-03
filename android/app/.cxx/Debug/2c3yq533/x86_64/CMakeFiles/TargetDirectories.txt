@@ -1,0 +1,2 @@
+C:/Users/pathum/source/repos/Digital-Panchikawaththa-Final-publish/android/app/.cxx/Debug/2c3yq533/x86_64/CMakeFiles/edit_cache.dir
+C:/Users/pathum/source/repos/Digital-Panchikawaththa-Final-publish/android/app/.cxx/Debug/2c3yq533/x86_64/CMakeFiles/rebuild_cache.dir
