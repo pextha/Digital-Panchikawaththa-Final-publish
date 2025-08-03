@@ -2,12 +2,14 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:panchikawaththa/models/Product_Model.dart';
+import 'package:panchikawaththa/models/Review_Model.dart';
 import 'package:panchikawaththa/pages/add_to_cart_popup.dart';
 import 'package:panchikawaththa/pages/orderConfirmation.dart';
 import 'package:panchikawaththa/pages/review.dart';
 import 'package:share_plus/share_plus.dart';
 import 'seller_page.dart';
 import 'dart:math';
+import 'package:panchikawaththa/pages/ReviewForm.dart';
 
 class ProductDetailPage extends StatefulWidget {
   final String productId;
@@ -141,8 +143,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     builder: (_) => Padding(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 24),
-                      child: CartPopupContent(
-                          product: product), // pass the actual product object
+                      child: CartPopupContent(product: product),
                     ),
                   );
                 },
@@ -296,11 +297,131 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   }
 }
 
-class RatingsAndReviews extends StatelessWidget {
+class RatingsAndReviews extends StatefulWidget {
   final String productId;
   static const Color primaryColor = Color.fromARGB(255, 20, 211, 3);
 
   const RatingsAndReviews({super.key, required this.productId});
+
+  @override
+  _RatingsAndReviewsState createState() => _RatingsAndReviewsState();
+}
+
+class _RatingsAndReviewsState extends State<RatingsAndReviews> {
+  List<Review> reviews = [];
+  bool isLoading = true;
+  Map<int, int> ratingCount = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
+
+  @override
+  void initState() {
+    super.initState();
+    fetchReviews();
+  }
+
+  Future<void> fetchReviews() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('reviews')
+          .where('productId', isEqualTo: widget.productId)
+          .orderBy('date', descending: true)
+          .limit(3)
+          .get();
+
+      final data = snapshot.docs
+          .map((doc) => Review.fromFirestore(doc.data(), doc.id))
+          .toList();
+
+      setState(() {
+        reviews = data;
+        calculateRatingCounts();
+        isLoading = false;
+      });
+    } catch (e) {
+      print("Error fetching reviews: $e");
+      setState(() => isLoading = false);
+    }
+  }
+
+  void calculateRatingCounts() {
+    ratingCount = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
+    for (var review in reviews) {
+      ratingCount[review.stars] = (ratingCount[review.stars] ?? 0) + 1;
+    }
+  }
+
+  double get averageRating {
+    int totalStars = 0;
+    int totalRatings = 0;
+    ratingCount.forEach((stars, count) {
+      totalStars += stars * count;
+      totalRatings += count;
+    });
+    return totalRatings > 0 ? totalStars / totalRatings : 0.0;
+  }
+
+  int get totalRatings => ratingCount.values.reduce((a, b) => a + b);
+
+  Widget _buildRatingBar(int stars, int count) {
+    double maxWidth = 100;
+    double percent = totalRatings > 0 ? count / totalRatings : 0;
+
+    return Row(
+      children: [
+        Row(
+          children: List.generate(stars,
+              (_) => const Icon(Icons.star, size: 12, color: Colors.orange)),
+        ),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: maxWidth,
+          child: Stack(
+            children: [
+              Container(width: maxWidth, height: 8, color: Colors.grey[300]),
+              Container(
+                  width: maxWidth * percent, height: 8, color: Colors.green),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(count.toString()),
+      ],
+    );
+  }
+
+  Widget _buildReviewCard(Review review) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(review.review),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Row(
+                children: List.generate(
+                    review.stars,
+                    (_) =>
+                        const Icon(Icons.star, size: 14, color: Colors.orange)),
+              ),
+              const SizedBox(width: 6),
+              Text(review.name, style: const TextStyle(color: Colors.grey)),
+              const SizedBox(width: 6),
+              Text(
+                review.date.toLocal().toString().substring(0, 10),
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -312,118 +433,246 @@ class RatingsAndReviews extends StatelessWidget {
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              '4.3', // Placeholder: Fetch dynamically if available
-              style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('23 ratings'), // Placeholder: Fetch dynamically
-                const SizedBox(height: 4),
-                _buildRatingBar(5, 12),
-                _buildRatingBar(4, 5),
-                _buildRatingBar(3, 4),
-                _buildRatingBar(2, 2),
-                _buildRatingBar(1, 0),
-              ],
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        _buildReviewCard(
-          "Excellent Seller...quick shipment...item was exactly as stated...quality item! A+++",
-          "2***k",
-        ),
-        _buildReviewCard(
-          "Perfect transaction! Item exactly as described, and shipped quickly.",
-          "4***n",
-        ),
-        _buildReviewCard(
-          "Item received is exactly as advertised. Fast turnaround on shipping. Smooth transaction.",
-          "0***w",
-        ),
-        const SizedBox(height: 12),
-        Center(
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: primaryColor,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+        isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        averageRating.toStringAsFixed(1),
+                        style: const TextStyle(
+                            fontSize: 36, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('$totalRatings ratings'),
+                          const SizedBox(height: 4),
+                          ...ratingCount.keys.map((star) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              child: _buildRatingBar(star, ratingCount[star]!),
+                            );
+                          }).toList(),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  reviews.isEmpty
+                      ? const Text('No reviews yet.')
+                      : Column(
+                          children: reviews
+                              .map((review) => _buildReviewCard(review))
+                              .toList(),
+                        ),
+                  const SizedBox(height: 12),
+                  Center(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: RatingsAndReviews.primaryColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                      child: const Text(
+                        'See More',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) =>
+                                  ReviewsPage(productId: widget.productId)),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
-            ),
-            child: const Text(
-              'See More',
-              style: TextStyle(color: Colors.white),
-            ),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => ReviewsPage(productId: productId)),
-              );
-            },
-          ),
-        ),
         const SizedBox(height: 12),
       ],
     );
   }
+}
 
-  static Widget _buildRatingBar(int star, int count) {
+class ReviewsPage extends StatefulWidget {
+  final String productId;
+
+  const ReviewsPage({super.key, required this.productId});
+
+  @override
+  _ReviewsPageState createState() => _ReviewsPageState();
+}
+
+class _ReviewsPageState extends State<ReviewsPage> {
+  List<Review> reviews = [];
+  bool isLoading = true;
+  Map<int, int> ratingCount = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
+
+  @override
+  void initState() {
+    super.initState();
+    fetchReviews();
+  }
+
+  Future<void> fetchReviews() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('reviews')
+          .where('productId', isEqualTo: widget.productId)
+          .orderBy('date', descending: true)
+          .get();
+
+      final data = snapshot.docs
+          .map((doc) => Review.fromFirestore(doc.data(), doc.id))
+          .toList();
+
+      setState(() {
+        reviews = data;
+        calculateRatingCounts();
+        isLoading = false;
+      });
+    } catch (e) {
+      print("Error fetching reviews: $e");
+      setState(() => isLoading = false);
+    }
+  }
+
+  void calculateRatingCounts() {
+    ratingCount = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
+    for (var review in reviews) {
+      ratingCount[review.stars] = (ratingCount[review.stars] ?? 0) + 1;
+    }
+  }
+
+  double get averageRating {
+    int totalStars = 0;
+    int totalRatings = 0;
+    ratingCount.forEach((stars, count) {
+      totalStars += stars * count;
+      totalRatings += count;
+    });
+    return totalRatings > 0 ? totalStars / totalRatings : 0.0;
+  }
+
+  int get totalRatings => ratingCount.values.reduce((a, b) => a + b);
+
+  void _showReviewPopup(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => ReviewForm(productId: widget.productId),
+    ).then((_) => fetchReviews());
+  }
+
+  Widget _buildRatingBar(int stars, int count) {
+    double maxWidth = 200;
+    double percent = totalRatings > 0 ? count / totalRatings : 0;
+
     return Row(
       children: [
-        Row(
-          children: List.generate(star,
-              (_) => const Icon(Icons.star, size: 12, color: Colors.orange)),
+        Icon(Icons.star, size: 16, color: Colors.orange),
+        SizedBox(width: 2),
+        Text('$stars', style: TextStyle(fontWeight: FontWeight.bold)),
+        SizedBox(width: 8),
+        Stack(
+          children: [
+            Container(width: maxWidth, height: 8, color: Colors.grey[300]),
+            Container(
+                width: maxWidth * percent, height: 8, color: Colors.green),
+          ],
         ),
-        const SizedBox(width: 8),
-        SizedBox(
-          width: 100,
-          child: LinearProgressIndicator(
-            value: count / 12, // Adjust denominator based on total ratings
-            color: Colors.green,
-            backgroundColor: Colors.grey.shade300,
-            minHeight: 8,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text('$count'),
+        SizedBox(width: 8),
+        Text(count.toString()),
       ],
     );
   }
 
-  static Widget _buildReviewCard(String review, String user) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(review),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Row(
-                children: List.generate(
-                    5,
-                    (_) =>
-                        const Icon(Icons.star, size: 14, color: Colors.orange)),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Rating & Reviews')),
+      body: isLoading
+          ? Center(child: CircularProgressIndicator())
+          : Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Rating & Reviews",
+                      style:
+                          TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  SizedBox(height: 8),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(averageRating.toStringAsFixed(1),
+                          style: TextStyle(
+                              fontSize: 48, fontWeight: FontWeight.bold)),
+                      SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: ratingCount.keys.map((star) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: _buildRatingBar(star, ratingCount[star]!),
+                          );
+                        }).toList(),
+                      )
+                    ],
+                  ),
+                  SizedBox(height: 16),
+                  Text("${reviews.length} reviews",
+                      style: TextStyle(fontSize: 16)),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: reviews.length,
+                      itemBuilder: (_, index) {
+                        final review = reviews[index];
+                        return ListTile(
+                          leading: CircleAvatar(child: Icon(Icons.person)),
+                          title: Text(review.name),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: List.generate(
+                                  review.stars,
+                                  (_) => Icon(Icons.star,
+                                      size: 16, color: Colors.orange),
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(review.review),
+                              Text(review.date.toLocal().toString(),
+                                  style: TextStyle(fontSize: 12)),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: ElevatedButton.icon(
+                      onPressed: () => _showReviewPopup(context),
+                      icon: Icon(Icons.edit, color: Colors.white),
+                      label: Text('Write a review',
+                          style: TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFF02B91A),
+                      ),
+                    ),
+                  )
+                ],
               ),
-              const SizedBox(width: 6),
-              Text(user, style: const TextStyle(color: Colors.grey)),
-            ],
-          ),
-        ],
-      ),
+            ),
     );
   }
 }
